@@ -1,5 +1,3 @@
-.
-
 🎓 Higher Education Data Analysis (R)
 📊 Project Overview
 
