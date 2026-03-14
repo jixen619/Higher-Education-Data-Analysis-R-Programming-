@@ -1,0 +1,965 @@
+---
+title: "FDS_CW_2"
+author: "Jixen Biju, Krishnan Unni Madhusudhanan Nair, Ashwin Paul, Haritha Chandran"
+date: "2024-12-18"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+ 
+
+```{r cars}
+install.packages("dplyr")
+install.packages("tidyr")
+# Load necessary libraries
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+library(readxl)
+dataset = read_excel("subject_of_study_2(science).xlsx")
+head(dataset)
+```
+
+```{r}
+Newcastle = read_excel("subject_of_study_2(science).xlsx", sheet = 'Newcastle')
+head(Newcastle)
+```
+
+```{r}
+Liverpool = read_excel("subject_of_study_2(science).xlsx", sheet = 'Liverpool')
+head(Liverpool)
+```
+
+```{r}
+middlesbrough = read_excel("subject_of_study_2(science).xlsx", sheet = 'middlesbrough')
+head(middlesbrough)
+```
+
+
+
+
+```{r}
+dataset_nonscience = read_excel("subject_of_study(nonscience).xlsx")
+head(dataset_nonscience)
+```
+
+
+
+
+```{r}
+# Reshape the science dataset into long format
+science_long <- dataset %>%
+  pivot_longer(
+    cols = -`HE provider`,  # Exclude the 'HE provider' column
+    names_to = "Subject",   # Column names will be subjects
+    values_to = "Count"     # The cell values will be the counts
+  ) %>%
+  filter(`HE provider` != "Total") %>%
+  mutate(Category = "Science")  # Label this dataset as "Science"
+
+# Reshape the non-science dataset into long format
+non_science_long <- dataset_nonscience %>%
+  pivot_longer(
+    cols = -`HE provider`,  # Exclude the 'HE provider' column
+    names_to = "Subject",   # Column names will be subjects
+    values_to = "Count"     # The cell values will be the counts
+  ) %>%
+  filter(`HE provider` != "Total") %>%
+  mutate(Category = "Non-Science")  # Label this dataset as "Non-Science"
+
+# Combine the two datasets into one
+combined_data <- bind_rows(science_long, non_science_long)
+
+# Summing the counts for Science and Non-Science for each HE provider (university)
+totals <- combined_data %>%
+  group_by(`HE provider`, Category) %>%
+  summarise(Total_Count = sum(Count), .groups = "drop")
+
+# Create a bar plot showing total science vs non-science counts for each university
+ggplot(totals, aes(x = `HE provider`, y = Total_Count, fill = Category)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Create a grouped bar plot
+  theme_minimal() +
+  labs(
+    title = "Total Number of Science vs Non-Science Subjects in Newcastle Universities",
+    x = "University",
+    y = "Total Count"
+  ) +
+  scale_fill_manual(values = c("Science" = "skyblue", "Non-Science" = "orange")) +  # Customize colors
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+
+
+```
+
+```{r}
+gender = read_excel("study_of_gender.xlsx")
+head(gender)
+
+```
+
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(ggplot2)
+library(dplyr)
+
+# Load the data
+gender_data <- read_excel("study_of_gender.xlsx", sheet = "gender") %>%
+  rename_all(trimws) # Remove extra spaces from column names
+
+# Function to create a pie chart for a university
+create_pie_chart <- function(data, university_name) {
+  # Filter data for the specific university
+  university_data <- dplyr::filter(data, `HE provider` == university_name)
+  
+  if (nrow(university_data) == 0) {
+    message(paste("No data found for", university_name))
+    return(NULL)
+  }
+  
+  # Prepare data for the pie chart
+  gender_counts <- university_data %>%
+    select(Female, Male, Unknown) %>%
+    as.numeric()
+  gender_labels <- c("Female", "Male", "Unknown")
+  
+  if (sum(gender_counts, na.rm = TRUE) == 0) {
+    message(paste("Skipping", university_name, "- all counts are zero or missing"))
+    return(NULL)
+  }
+  
+  # Create pie chart
+  pie_data <- data.frame(
+    Gender = gender_labels,
+    Count = gender_counts
+  )
+  
+  ggplot(pie_data, aes(x = "", y = Count, fill = Gender)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar("y") +
+    labs(
+      title = paste("Gender Distribution -", university_name),
+      x = NULL,
+      y = NULL
+    ) +
+    geom_text(aes(label = paste0(round(Count / sum(Count) * 100, 1), "%")), 
+              position = position_stack(vjust = 0.5)) +
+    theme_void() +
+    scale_fill_brewer(palette = "Set2")
+}
+
+# Generate pie charts for Newcastle universities
+create_pie_chart(gender_data, "Newcastle University")
+create_pie_chart(gender_data, "University of Northumbria at Newcastle")
+create_pie_chart(gender_data, "University Centre Quayside Limited")
+
+
+
+```
+
+
+
+```{r}
+# Filter data for specific HE providers
+gender_filtered <- gender %>%
+  dplyr::filter(`HE provider` %in% c("Newcastle University", 
+                                     "University of Northumbria at Newcastle", 
+                                     "University Centre Quayside Limited")) %>%
+  select(-Total) %>%  # Exclude 'Total' column
+  pivot_longer(cols = c(Male, Female, Unknown), 
+               names_to = "Category", 
+               values_to = "Count")
+
+# Summarize data to calculate total count for each gender category
+gender_summary <- gender_filtered %>%
+  group_by(Category) %>%
+  summarise(Total_Count = sum(Count))
+
+# Create Pie Chart
+ggplot(gender_summary, aes(x = "", y = Total_Count, fill = Category)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  theme_void() +
+  labs(title = "Gender Distribution in Universities of Newcastle") +
+  scale_fill_brewer(palette = "Set2")
+```
+Pie Charts for Individual Universities in Newcastle
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+
+# Filter Newcastle universities
+newcastle_data <- gender_data %>%
+  dplyr::filter(grepl("Newcastle|Quayside", `HE provider`, ignore.case = TRUE))
+
+# Generate pie charts for each university
+for (i in seq_len(nrow(newcastle_data))) {
+  university <- newcastle_data[i, ]
+  gender_counts <- c(university$Female, university$Male, university$Unknown)
+  labels <- c("Female", "Male", "Unknown")
+  
+  # Create pie chart
+  pie(
+    gender_counts,
+    labels = paste0(labels, ": ", round(100 * gender_counts / sum(gender_counts), 1), "%"),
+    main = paste("Gender Distribution at", university$`HE provider`),
+    col = c("#FF9999", "#66B3FF", "#99FF99")  # Add colors for better visualization
+  )
+}
+
+
+```
+
+ Combined Gender Distribution for Newcastle
+```{r}
+# Combine Newcastle universities
+combined_newcastle <- newcastle_data %>% 
+  summarise(Female = sum(Female), Male = sum(Male), Unknown = sum(Unknown))
+
+gender_counts <- c(combined_newcastle$Female, combined_newcastle$Male, combined_newcastle$Unknown)
+labels <- c("Female", "Male", "Unknown")
+
+# Plot pie chart
+pie(gender_counts, 
+    labels = paste0(labels, ": ", round(100 * gender_counts / sum(gender_counts), 1), "%"), 
+    main = "Overall Gender Distribution in Newcastle")
+
+```
+
+```{r}
+# Load libraries
+library(readxl)
+library(ggplot2)
+
+# Read the Excel file and load Middlesbrough data sheets directly
+middle_22_23 <- read_excel("All Gender.xlsx", sheet = "Middle22-23")
+middle_21_22 <- read_excel("All Gender.xlsx", sheet = "Middle21-22")
+middle_20_21 <- read_excel("All Gender.xlsx", sheet = "Middle20-21")
+
+# Combine the gender data from all three sheets
+gender_data <- rbind(
+  middle_22_23[, c("Female", "Male", "Unknown")],
+  middle_21_22[, c("Female", "Male", "Unknown")],
+  middle_20_21[, c("Female", "Male", "Unknown")]
+)
+
+# Summarize the total counts for each gender
+gender_totals <- colSums(gender_data, na.rm = TRUE)
+
+# Convert to a data frame for plotting
+gender_df <- data.frame(
+  Gender = names(gender_totals),
+  Count = as.numeric(gender_totals)
+)
+
+# Add percentage labels
+gender_df$Percentage <- (gender_df$Count / sum(gender_df$Count)) * 100
+
+# Create the pie chart with percentages
+ggplot(gender_df, aes(x = "", y = Count, fill = Gender)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y") +
+  labs(title = "Overall Gender Distribution in Middlesbrough",
+       x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank()) +
+  geom_text(aes(label = paste0(round(Percentage, 1), "%")),
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values = c("Female" = "pink", "Male" = "blue", "Unknown" = "grey")) # Customize colors
+
+```
+
+```{r}
+# Install necessary libraries if not already installed
+if (!require("readxl")) install.packages("readxl")
+if (!require("ggplot2")) install.packages("ggplot2")
+
+# Load libraries
+library(readxl)
+library(ggplot2)
+
+# Read the Liverpool sheets
+liver_22_23 <- read_excel("All Gender.xlsx", sheet = "Liver22-23")
+liver_21_22 <- read_excel("All Gender.xlsx", sheet = "Liver21-22")
+liver_20_21 <- read_excel("All Gender.xlsx", sheet = "Liver20-21")
+
+# Standardize column names to lowercase for consistency
+colnames(liver_22_23) <- tolower(colnames(liver_22_23))
+colnames(liver_21_22) <- tolower(colnames(liver_21_22))
+colnames(liver_20_21) <- tolower(colnames(liver_20_21))
+
+# Extract relevant columns (female, male, and unknown) from all sheets
+gender_data <- rbind(
+  liver_22_23[, c("female", "male", "unknown")],
+  liver_21_22[, c("female", "male", "unknown")],
+  liver_20_21[, c("female", "male", "unknown")]
+)
+
+# Summarize the total counts for each gender
+gender_totals <- colSums(gender_data, na.rm = TRUE)
+
+# Convert to a data frame for plotting
+gender_df <- data.frame(
+  Gender = names(gender_totals),
+  Count = as.numeric(gender_totals)
+)
+
+# Add percentage labels
+gender_df$Percentage <- (gender_df$Count / sum(gender_df$Count)) * 100
+
+# Create the pie chart
+ggplot(gender_df, aes(x = "", y = Count, fill = Gender)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y") +
+  labs(title = "Overall Gender Distribution in Liverpool",
+       x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid = element_blank()) +
+  geom_text(aes(label = ifelse(Percentage > 0, paste0(round(Percentage, 1), "%"), "")), 
+            position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values = c("female" = "pink", "male" = "blue", "unknown" = "grey")) # Customize colors
+
+```
+
+
+
+ Bar Chart for Gender Distribution in Newcastle, Middlesbrough, and Liverpool
+```{r}
+# Load necessary libraries
+library(readxl)
+library(ggplot2)
+
+# Load data for each city
+newcastle_data <- read_excel("gender.xlsx", sheet = "Newcastle")
+middlesbrough_data <- read_excel("gender.xlsx", sheet = "Middlebrough")
+liverpool_data <- read_excel("gender.xlsx", sheet = "Liverpool")
+
+# Set appropriate column names (adjust if needed)
+colnames(newcastle_data) <- c("University", "Female", "Male", "Unknown", "Total")
+colnames(middlesbrough_data) <- c("University", "Female", "Male", "Unknown", "Total")
+colnames(liverpool_data) <- c("University", "Female", "Male", "Unknown", "Total")
+
+# Aggregate gender data for each city
+combined_newcastle <- colSums(newcastle_data[, c("Female", "Male", "Unknown")], na.rm = TRUE)
+combined_middlesbrough <- colSums(middlesbrough_data[, c("Female", "Male", "Unknown")], na.rm = TRUE)
+combined_liverpool <- colSums(liverpool_data[, c("Female", "Male", "Unknown")], na.rm = TRUE)
+
+# Combine all cities into one data frame
+locations <- c("Newcastle", "Middlesbrough", "Liverpool")
+gender_totals <- data.frame(
+  Location = rep(locations, each = 3),
+  Gender = rep(c("Female", "Male", "Unknown"), times = 3),
+  Count = c(combined_newcastle, combined_middlesbrough, combined_liverpool)
+)
+
+# Plot bar chart
+ggplot(gender_totals, aes(x = Location, y = Count, fill = Gender)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Gender Distribution Comparison Across Cities", x = "City", y = "Count") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set2")
+
+```
+
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(reshape2)
+library(ggplot2)
+
+# Load data for Newcastle across three years
+newcastle_22_23 <- read_excel("All Gender.xlsx", sheet = "Newcastle 22-23")
+newcastle_21_22 <- read_excel("All Gender.xlsx", sheet = "New21-22")
+newcastle_20_21 <- read_excel("All Gender.xlsx", sheet = "new 20-21")
+
+# Ensure column names are consistent
+colnames(newcastle_22_23) <- c("University", "Female", "Male", "Unknown", "Total")
+colnames(newcastle_21_22) <- c("University", "Female", "Male", "Unknown", "Total")
+colnames(newcastle_20_21) <- c("University", "Female", "Male", "Unknown", "Total")
+
+# Aggregate gender data for Newcastle
+gender_trend <- data.frame(
+  Year = c(2023, 2022, 2021),
+  Female = c(sum(newcastle_22_23$Female, na.rm = TRUE),
+             sum(newcastle_21_22$Female, na.rm = TRUE),
+             sum(newcastle_20_21$Female, na.rm = TRUE)),
+  Male = c(sum(newcastle_22_23$Male, na.rm = TRUE),
+           sum(newcastle_21_22$Male, na.rm = TRUE),
+           sum(newcastle_20_21$Male, na.rm = TRUE)),
+  Unknown = c(sum(newcastle_22_23$Unknown, na.rm = TRUE),
+              sum(newcastle_21_22$Unknown, na.rm = TRUE),
+              sum(newcastle_20_21$Unknown, na.rm = TRUE))
+)
+
+# Melt the data for plotting
+gender_trend_melt <- melt(gender_trend, id.vars = "Year", variable.name = "Gender", value.name = "Count")
+
+# Line chart for gender trends
+ggplot(gender_trend_melt, aes(x = Year, y = Count, color = Gender)) +
+  geom_line(linewidth = 1.2) +  # Replaced size with linewidth
+  labs(title = "Gender Trend in Newcastle (3 Academic Years)", x = "Year", y = "Count") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set2")
+
+
+```
+```{r}
+# Load necessary libraries
+library(readxl)
+library(reshape2)
+library(ggplot2)
+
+# Load data for each year and location
+newcastle_22_23 <- read_excel("All Gender.xlsx", sheet = "Newcastle 22-23")
+newcastle_21_22 <- read_excel("All Gender.xlsx", sheet = "New21-22")
+newcastle_20_21 <- read_excel("All Gender.xlsx", sheet = "new 20-21")
+
+middlesbrough_22_23 <- read_excel("All Gender.xlsx", sheet = "Middle22-23")
+middlesbrough_21_22 <- read_excel("All Gender.xlsx", sheet = "Middle21-22")
+middlesbrough_20_21 <- read_excel("All Gender.xlsx", sheet = "Middle20-21")
+
+liverpool_22_23 <- read_excel("All Gender.xlsx", sheet = "Liver22-23")
+liverpool_21_22 <- read_excel("All Gender.xlsx", sheet = "Liver21-22")
+liverpool_20_21 <- read_excel("All Gender.xlsx", sheet = "Liver20-21")
+
+# Ensure column names are consistent
+colnames(newcastle_22_23) <- colnames(newcastle_21_22) <- colnames(newcastle_20_21) <- c("University", "Female", "Male", "Unknown", "Total")
+colnames(middlesbrough_22_23) <- colnames(middlesbrough_21_22) <- colnames(middlesbrough_20_21) <- c("University", "Female", "Male", "Unknown", "Total")
+colnames(liverpool_22_23) <- colnames(liverpool_21_22) <- colnames(liverpool_20_21) <- c("University", "Female", "Male", "Unknown", "Total")
+
+# Aggregate gender data for all years and locations
+area_data <- data.frame(
+  Year = rep(c(2023, 2022, 2021), times = 3),
+  Location = rep(c("Newcastle", "Middlesbrough", "Liverpool"), each = 3),
+  Female = c(
+    sum(newcastle_22_23$Female, na.rm = TRUE),
+    sum(newcastle_21_22$Female, na.rm = TRUE),
+    sum(newcastle_20_21$Female, na.rm = TRUE),
+    sum(middlesbrough_22_23$Female, na.rm = TRUE),
+    sum(middlesbrough_21_22$Female, na.rm = TRUE),
+    sum(middlesbrough_20_21$Female, na.rm = TRUE),
+    sum(liverpool_22_23$Female, na.rm = TRUE),
+    sum(liverpool_21_22$Female, na.rm = TRUE),
+    sum(liverpool_20_21$Female, na.rm = TRUE)
+  ),
+  Male = c(
+    sum(newcastle_22_23$Male, na.rm = TRUE),
+    sum(newcastle_21_22$Male, na.rm = TRUE),
+    sum(newcastle_20_21$Male, na.rm = TRUE),
+    sum(middlesbrough_22_23$Male, na.rm = TRUE),
+    sum(middlesbrough_21_22$Male, na.rm = TRUE),
+    sum(middlesbrough_20_21$Male, na.rm = TRUE),
+    sum(liverpool_22_23$Male, na.rm = TRUE),
+    sum(liverpool_21_22$Male, na.rm = TRUE),
+    sum(liverpool_20_21$Male, na.rm = TRUE)
+  ),
+  Unknown = c(
+    sum(newcastle_22_23$Unknown, na.rm = TRUE),
+    sum(newcastle_21_22$Unknown, na.rm = TRUE),
+    sum(newcastle_20_21$Unknown, na.rm = TRUE),
+    sum(middlesbrough_22_23$Unknown, na.rm = TRUE),
+    sum(middlesbrough_21_22$Unknown, na.rm = TRUE),
+    sum(middlesbrough_20_21$Unknown, na.rm = TRUE),
+    sum(liverpool_22_23$Unknown, na.rm = TRUE),
+    sum(liverpool_21_22$Unknown, na.rm = TRUE),
+    sum(liverpool_20_21$Unknown, na.rm = TRUE)
+  )
+)
+
+# Reshape the data for plotting
+area_data_melt <- melt(area_data, id.vars = c("Year", "Location"), variable.name = "Gender", value.name = "Count")
+
+# Area chart
+ggplot(area_data_melt, aes(x = Year, y = Count, fill = Gender)) +
+  geom_area(position = "stack", alpha = 0.6) +
+  facet_wrap(~ Location, scales = "free") +
+  labs(title = "Gender Trends Across Locations (Newcastle, Middlesbrough, Liverpool)", x = "Year", y = "Count") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set2")
+
+
+```
+
+```{r}
+#########
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Assuming 'dataset' is already loaded
+# Reshape the data into long format and exclude 'Total' row
+long_data <- dataset %>%
+  pivot_longer(
+    cols = -c(`HE provider`, Total),   # Exclude 'HE provider' and 'Total' columns
+    names_to = "Subject",              # Column names will be subjects
+    values_to = "Count"                # Values will be the counts
+  ) %>%
+  filter(`HE provider` != "Total")     # Exclude the row where 'HE provider' is "Total"
+
+# Loop through each HE provider to create separate pie charts
+unique_providers <- unique(long_data$`HE provider`)  # Get unique universities
+
+# Generate pie charts for each provider
+for (provider in unique_providers) {
+  # Filter data for the current provider
+  provider_data <- long_data %>%
+    filter(`HE provider` == provider)
+  
+  # Calculate percentages for each Subject
+  provider_data <- provider_data %>%
+    mutate(Percentage = (Count / sum(Count)) * 100)
+  
+  # Add a label column for displaying Subject and Percentage
+  provider_data <- provider_data %>%
+    mutate(Label = paste0(round(Percentage, 1), "%"))  # Only display the percentage
+  
+  # Create a pie chart for the current provider
+  pie_chart <- ggplot(provider_data, aes(x = "", y = Count, fill = Subject)) +
+    geom_bar(stat = "identity", width = 1) +      # Full bar to create the pie
+    coord_polar("y", start = 0) +                 # Convert bar chart to pie chart
+    geom_text(aes(label = Label),                 # Add percentage labels
+              position = position_stack(vjust = 0.5), # Center the labels in the slice
+              size = 2,                           # Adjust font size
+              color = "black") +                  # Make text white for better visibility
+    theme_void() +                                # Remove axes and background
+    labs(
+      title = paste("Subject Distribution in", provider)
+    ) +
+    scale_fill_brewer(palette = "Set3")           # Use a visually appealing color palette
+  
+  # Print the pie chart
+  print(pie_chart)
+}
+
+
+```
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Assuming 'dataset' is already loaded
+# Reshape the data into long format and exclude 'Total' row
+long_data <- dataset_nonscience %>%
+  pivot_longer(
+    cols = -c(`HE provider`, Total),   # Exclude 'HE provider' and 'Total' columns
+    names_to = "Subject",              # Column names will be subjects
+    values_to = "Count"                # Values will be the counts
+  ) %>%
+  filter(`HE provider` != "Total")     # Exclude the row where 'HE provider' is "Total"
+
+# Loop through each HE provider to create separate pie charts
+unique_providers <- unique(long_data$`HE provider`)  # Get unique universities
+
+# Generate pie charts for each provider
+for (provider in unique_providers) {
+  # Filter data for the current provider
+  provider_data <- long_data %>%
+    filter(`HE provider` == provider)
+  
+  # Calculate percentages for each Subject
+  provider_data <- provider_data %>%
+    mutate(Percentage = (Count / sum(Count)) * 100)
+  
+  # Add a label column for displaying Subject and Percentage
+  provider_data <- provider_data %>%
+    mutate(Label = paste0(round(Percentage, 1), "%"))  # Only display the percentage
+  
+  # Create a pie chart for the current provider
+  pie_chart <- ggplot(provider_data, aes(x = "", y = Count, fill = Subject)) +
+    geom_bar(stat = "identity", width = 1) +      # Full bar to create the pie
+    coord_polar("y", start = 0) +                 # Convert bar chart to pie chart
+    geom_text(aes(label = Label),                 # Add percentage labels
+              position = position_stack(vjust = 0.5), # Center the labels in the slice
+              size = 2,                           # Adjust font size
+              color = "black") +                  # Make text white for better visibility
+    theme_void() +                                # Remove axes and background
+    labs(
+      title = paste("Non-Science Subject Distribution in", provider)
+    ) +
+    scale_fill_brewer(palette = "Set3")           # Use a visually appealing color palette
+  
+  # Print the pie chart
+  print(pie_chart)
+}
+
+
+
+```
+
+```{r}
+
+# Load necessary library
+
+library(readxl)
+
+# Read the data from the files in the working directory
+dataset_22 <- read_excel("subject_of_study_2(science) 5.xlsx", sheet = 'newcastle(21-22)')
+dataset_21 <- read_excel("subject_of_study_2(science) 5.xlsx", sheet = 'newcastle(20-21)')
+dataset_nonscience_22 <- read_excel("subject_of_study(nonscience) 5.xlsx", sheet = 'newcastle(21-22)')
+dataset_nonscience_21 <- read_excel("subject_of_study(nonscience) 5.xlsx", sheet = 'newcastle(20-21)')
+
+# View the first few rows of each dataset to ensure proper loading
+head(dataset_22)
+head(dataset_21)
+head(dataset_nonscience_22)
+head(dataset_nonscience_21)
+
+```
+
+
+```{r}
+# Load the readxl library
+library(readxl)
+
+# Read the Newcastle sheet for science and nonscience datasets
+total_science <- read_excel("subject_of_study_2(science).xlsx", sheet = "Newcastle")
+total_nonscience <- read_excel("subject_of_study(nonscience).xlsx", sheet = "Newcastle")
+
+# Extract the Total column
+total_science_values <- total_science$Total
+total_nonscience_values <- total_nonscience$Total
+
+# Display the extracted totals
+print(total_science_values)
+print(total_nonscience_values)
+
+```
+
+
+
+```{r}
+science_long <- total_science %>%
+  pivot_longer(
+    cols = -`HE provider`,
+    names_to = "Subject",
+    values_to = "Count"
+  ) %>%
+  dplyr::filter(`HE provider` != "Total") %>%
+  mutate(Category = "Science")
+
+non_science_long <- total_nonscience %>%
+  pivot_longer(
+    cols = -`HE provider`,
+    names_to = "Subject",
+    values_to = "Count"
+  ) %>%
+  dplyr::filter(`HE provider` != "Total") %>%
+  mutate(Category = "Non-Science")
+
+combined_data <- bind_rows(science_long, non_science_long)
+
+totals <- combined_data %>%
+  group_by(`HE provider`, Category) %>%
+  summarise(Total_Count = sum(Count), .groups = "drop")
+
+ggplot(totals, aes(x = `HE provider`, y = Total_Count, fill = Category)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(
+    title = "Total Number of Science vs Non-Science Subjects in Newcastle Universities",
+    x = "University",
+    y = "Total Count"
+  ) +
+  scale_fill_manual(values = c("Science" = "skyblue", "Non-Science" = "orange")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+```
+
+
+
+```{r}
+# Load necessary library
+library(ggplot2)
+data <- read_excel("subject study (1).xlsx")
+
+# Sample data preparation (Replace this with actual data loading in R)
+data <- data.frame(
+  Year = c("20/21", "21/22", "22/23", "20/21", "21/22", "22/23"),
+  University = c("Newcastle", "Newcastle", "Newcastle", "Liverpool", "Liverpool", "Liverpool"),
+  Subject = c("science", "science", "science", "nonscience", "nonscience", "nonscience"),
+  Enrollment = c(1200, 1300, 1400, 800, 850, 900)
+)
+
+# Plot the data
+ggplot(data, aes(x = Year, y = Enrollment, color = Subject, group = interaction(University, Subject))) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  facet_wrap(~ University, scales = "free_y") +
+  labs(
+    title = "Trends in Enrollment for Science and Non-Science Subjects",
+    x = "Academic Year",
+    y = "Number of Students Enrolled",
+    color = "Subject"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  )
+```
+
+
+```{r}
+# Load necessary library
+library(ggplot2)
+
+# Sample data preparation (Replace this with actual data loading in R)
+data <- data.frame(
+  City = c("Newcastle", "Newcastle", "Liverpool", "Liverpool", "Middlesbrough", "Middlesbrough"),
+  Subject = c("science", "nonscience", "science", "nonscience", "science", "nonscience"),
+  Enrollment = c(3500, 4200, 2800, 3000, 1500, 2000)
+)
+
+# Create a bar chart
+ggplot(data, aes(x = City, y = Enrollment, fill = Subject)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  labs(
+    title = "Comparison of Science and Non-Science Enrollments",
+    x = "City",
+    y = "Number of Students Enrolled",
+    fill = "Subject"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top"
+  ) +
+  scale_fill_manual(values = c("science" = "blue", "nonscience" = "orange"))
+```
+
+
+```{r}
+# Load necessary library
+library(ggplot2)
+
+# Sample data preparation (Replace this with actual data loading in R)
+data <- data.frame(
+  Year = c("20/21", "21/22", "22/23", "20/21", "21/22", "22/23"),
+  Subject = c("science", "science", "science", "nonscience", "nonscience", "nonscience"),
+  Enrollment = c(1500, 1800, 2000, 3200, 3500, 4000)
+)
+
+# Filter for Newcastle data (if needed in a larger dataset)
+# data <- subset(data, City == "Newcastle")
+
+# Create an area chart
+ggplot(data, aes(x = Year, y = Enrollment, fill = Subject, group = Subject)) +
+  geom_area(alpha = 0.6, color = "black", size = 0.5) +
+  labs(
+    title = "Trend of Science and Non-Science Enrollments in Newcastle",
+    x = "Academic Year",
+    y = "Number of Students Enrolled",
+    fill = "Subject"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top"
+  ) +
+  scale_fill_manual(values = c("science" = "blue", "nonscience" = "orange"))
+```
+
+
+```{r}
+# Load necessary library
+library(ggplot2)
+
+data <- read_excel("subject study (1).xlsx")
+
+
+# Sample data preparation (Replace this with actual data loading in R)
+data <- data.frame(
+  Year = c("20/21", "21/22", "22/23", "20/21", "21/22", "22/23"),
+  Subject = c("science", "science", "science", "nonscience", "nonscience", "nonscience"),
+  Enrollment = c(1200, 1400, 1600, 2500, 2700, 3000)
+)
+
+# Filter for Liverpool data (if needed in a larger dataset)
+# data <- subset(data, City == "Liverpool")
+
+# Create an area chart
+ggplot(data, aes(x = Year, y = Enrollment, fill = Subject, group = Subject)) +
+  geom_area(alpha = 0.6, color = "black", size = 0.5) +
+  labs(
+    title = "Trend of Science and Non-Science Enrollments in Liverpool",
+    x = "Academic Year",
+    y = "Number of Students Enrolled",
+    fill = "Subject"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top"
+  ) +
+  scale_fill_manual(values = c("science" = "green", "nonscience" = "red"))
+```
+
+
+```{r}
+# Load necessary library
+library(ggplot2)
+
+# Sample data preparation (Replace this with actual data loading in R)
+data <- data.frame(
+  Year = c("20/21", "21/22", "22/23", "20/21", "21/22", "22/23"),
+  Subject = c("science", "science", "science", "nonscience", "nonscience", "nonscience"),
+  Enrollment = c(800, 900, 1000, 2000, 2200, 2500)
+)
+
+# Filter for Middlesbrough data (if needed in a larger dataset)
+# data <- subset(data, City == "Middlesbrough")
+
+# Create an area chart
+ggplot(data, aes(x = Year, y = Enrollment, fill = Subject, group = Subject)) +
+  geom_area(alpha = 0.6, color = "black", size = 0.5) +
+  labs(
+    title = "Trend of Science and Non-Science Enrollments in Middlesbrough",
+    x = "Academic Year",
+    y = "Number of Students Enrolled",
+    fill = "Subject"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top"
+  ) +
+  scale_fill_manual(values = c("science" = "purple", "nonscience" = "yellow"))
+```
+
+
+```{r}
+
+# Load necessary library
+library(ggplot2)
+
+# Sample data preparation (Replace this with actual data loading in R)
+data <- data.frame(
+  City = rep(c("Newcastle", "Liverpool", "Middlesbrough"), each = 6),
+  Year = rep(c("20/21", "21/22", "22/23"), times = 6),
+  Subject = rep(c("science", "nonscience"), times = 9),
+  Enrollment = c(1500, 3200, 1800, 3500, 2000, 4000, 1200, 2500, 1400, 2700, 1600, 3000,
+                 800, 2000, 900, 2200, 1000, 2500)
+)
+
+# Create a stacked bar chart
+ggplot(data, aes(x = Year, y = Enrollment, fill = Subject)) +
+  geom_bar(stat = "identity", position = "stack", color = "black") +
+  facet_wrap(~ City, nrow = 1) +
+  labs(
+    title = "Comparison of Science and Non-Science Enrollments Across Cities",
+    x = "Academic Year",
+    y = "Number of Students Enrolled",
+    fill = "Subject"
+  ) +
+  scale_fill_manual(values = c("science" = "blue", "nonscience" = "orange")) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top"
+  )
+
+```
+```{r}
+# Load necessary library
+library(readxl)
+library(dplyr)
+
+# Load the dataset from the working directory
+data <- read_excel("gender_distribution_with_years(outside).xlsx", sheet = "gender_distribution_dataset_wit")
+
+# Summarize data by gender
+combined_newcastle <- data %>%
+  group_by(Gender) %>%
+  summarise(Count = n())
+
+# Extract counts and labels for the pie chart
+gender_counts <- combined_newcastle$Count
+labels <- combined_newcastle$Gender
+
+# Create a pie chart
+pie(
+  gender_counts,
+  labels = paste0(labels, ": ", round(100 * gender_counts / sum(gender_counts), 1), "%"),
+  main = "Overall Gender Distribution in Newcastle with outside data"
+)
+
+```
+
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(dplyr)
+library(ggplot2)
+
+# Load the dataset
+data <- read_excel("gender_distribution_with_years(outside).xlsx", 
+                   sheet = "gender_distribution_dataset_wit")
+
+# Clean and prepare the data
+data <- data %>%
+  mutate(
+    Year = as.factor(Year),   # Ensure Year is treated as a factor
+    Gender = trimws(Gender)   # Remove extra spaces from Gender values
+  )
+
+# Summarize data by Year and Gender
+gender_trend <- data %>%
+  group_by(Year, Gender) %>%
+  summarise(Count = n(), .groups = "drop")
+
+# Debugging step: Check the summarized data
+print(head(gender_trend))
+
+# Plot the data
+gender_plot <- ggplot(gender_trend, aes(x = Year, y = Count, color = Gender, group = Gender)) +
+  geom_line(linewidth = 1.2) +  # Add lines for gender trends
+  geom_point(size = 3) +        # Add points for clarity
+  labs(
+    title = "Gender Trend in Newcastle (3 Academic Years)",
+    x = "Year",
+    y = "Count"
+  ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set2") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10)
+  )
+
+# Print the plot explicitly (necessary in some R environments)
+print(gender_plot)
+
+# Optional: Save the plot to a file
+ggsave("gender_trend_plot.png", plot = gender_plot, width = 8, height = 5)
+
+
+
+
+```
+getwd()
